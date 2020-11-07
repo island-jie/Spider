@@ -31,7 +31,7 @@ class SearchSpider(scrapy.Spider):
         },
         'MONGO_HOST': 'localhost',
         'MONGO_PORT': 27017,
-        'MONGO_DB': 'search',
+        'MONGO_DB': 'mixmedium',
         'ITEM_PIPELINES': {
             'searchSpider.pipelines.SearchspiderPipeline': 300,
         }
@@ -130,30 +130,34 @@ class SearchSpider(scrapy.Spider):
                 callback=self.parse_post,
             )
         #获取这一页的所有（10条）新闻
+        colItem = SearchspiderItem()
+        #print(colItem.collection)
+        b_collection = self.db[colItem.collection]
+
+        #print("验证是否唯一")
+        #print(b_collection.count_documents({'url':'https://baijiahao.baidu.com/s?id=1682658342930806481&wfr=spider&for=pc', 'keyword': '美国大选'}))
         hrefs = response.xpath('//h3[@class="news-title_1YtI1"]/a/@href').extract()
         print("本页10条内容")
         print(hrefs)
         for href in hrefs:
-            yield scrapy.Request(href,
-                                 dont_filter=True,
-                                 meta={"keyword": key},
-                                 callback=self.parse_baijiahao
-                                 )
+            if b_collection.count_documents({'url': href, 'keyword': key}) == 0:
+                yield scrapy.Request(href,
+                                     dont_filter=True,
+                                     meta={"keyword": key},
+                                     callback=self.parse_baijiahao
+                                     )
 
     def parse_baijiahao(self, response):
         extractor = GeneralNewsExtractor()
         result = extractor.extract(response.text)
-        #print(result)
-        title = result['title']
-        time = result['publish_time']
-        content = result['content']
+        print('写入一条新闻')
+        b_item = SearchspiderItem()
         url = response.url
         keyword = response.meta.get('keyword')
-        items = {
-            'title': title,
-            'time': time,
-            'content': content,
-            'url':url,
-            'keyword':keyword
-        }
-        yield items
+        b_item['url'] = url
+        b_item['keyword'] = keyword
+        b_item['title'] = result['title']
+        b_item['time'] = result['publish_time']
+        b_item['content'] = result['content']
+
+        yield b_item

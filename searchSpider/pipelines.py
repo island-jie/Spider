@@ -13,45 +13,50 @@ class SearchspiderPipeline:
     '''
     保存mysql数据库
     '''
+
+    def __init__(self, mongo_uri, mongo_db):
+        self.mongo_uri = mongo_uri
+        self.mongo_db = mongo_db
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(mongo_uri=crawler.settings.get('MONGO_HOST'), mongo_db=crawler.settings.get('MONGO_DB'))
+
+    def open_spider(self, spider):
+        self.client = pymongo.MongoClient(host=self.mongo_uri, port=27017)
+        self.db = self.client[self.mongo_db]
+
     def process_item(self, item, spider):
-        #对传过来的数据进行处理
-        print("kkkkkkkkkkkkkkkkkkkkkk")
+        print('开始处理')
         #print(item)
         title = item['title']
         time = item['time']
         content = item['content']
         url = item['url']
         keyword = item['keyword']
-        localhost = "127.0.0.1"
-        port = 27017
-        temple ={
-            'title':title,
-            'time':time,
-            'content':content,
-            'url':url,
-            'keyword':keyword
+
+        temple = {
+            'title': title,
+            'time': time,
+            'content': content,
+            'url': url,
+            'keyword': keyword
         }
-        # 连接数据库
-        client = pymongo.MongoClient(host="localhost", port=port)
+        client = pymongo.MongoClient(host="localhost", port=27017)
         # 建库
         db = client.mixmedium
         # 建表
         searchDB = db.search
-        # 存
-        insert_id = searchDB.insert_one(temple)
-        print(insert_id)
-        #mysql有点问题
-        # msh = MysqlHelper.MysqlHelper(host="localhost",port=3306, username="root", password="123456", db="mixmedium",
-        #                               charset="utf8")
-        # msh.connect()
-        # sql = "insert into baidu_search_news values('{}','{}','{}','{}','{}')".format(
-        #    content, time, title, url, keyword)
-        # print(sql)
-        # msh.insert(sql)
+        coll = db['search']
+        if coll.count_documents({'title': title, 'keyword': keyword}) == 0:
+            # 存
+            insert_id = searchDB.insert_one(temple)
+            print(insert_id)
+        else:
+            print('存在数据')
         return item
-    def close_spider(self,spider):
-        #self.f.close()
-        print("爬取完毕")
-        spider.crawler.engine.close_spider(spider, '没有新数据关闭爬虫')
+
+    def close_spider(self, spider):
+        self.client.close()
 
 

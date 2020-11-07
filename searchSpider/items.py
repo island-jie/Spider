@@ -12,12 +12,9 @@ class SearchspiderItem(scrapy.Item):
     '''
     百家号item
     '''
-    pass
-
-    # collection = 'search'
-    # keyword = Field()
-    # url = Field()
-    # article_title = Field()
-    # author_name = Field()
-    # publish_time = Field()
-    # account_authentication = Field()
+    collection = 'search'
+    keyword = Field()
+    content = Field()
+    title = Field()
+    time = Field()
+    url = Field()
